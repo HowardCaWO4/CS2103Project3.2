@@ -3,7 +3,7 @@ class HeapImpl<T extends Comparable<? super T>> implements Heap<T> {
 	private T[] _storage;
 	private int _numElements;
 
-
+	// Constructor
 	@SuppressWarnings("unchecked")
 	public HeapImpl () {
 		_storage = (T[]) new Comparable[INITIAL_CAPACITY];
@@ -84,7 +84,6 @@ class HeapImpl<T extends Comparable<? super T>> implements Heap<T> {
 
 	// add an element to the heap
 	public void add (T data) {
-		// TODO: implement me
 		if (_numElements == _storage.length) {
 			expandStorage();
 		}
@@ -95,7 +94,6 @@ class HeapImpl<T extends Comparable<? super T>> implements Heap<T> {
 
 	// remove the first element in the heap
 	public T removeFirst () {
-		// TODO: implement me
 		if (_numElements == 0) {
 			return null;
 		} else {

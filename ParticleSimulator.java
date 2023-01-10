@@ -61,7 +61,48 @@ public class ParticleSimulator extends JPanel {
 	}
 
 	/**
-	 * // TODO implement the following simulate method
+	 * Helper to add collision times for each particle p, to be used in the "simulate" method.
+	 * @param p Particle to add collision times for
+	 * @param time current time of the event
+	 */
+	private void addP2PTimes (Particle p, double time) {
+		for (Particle q : _particles) {
+			if (p == null) {
+				continue;
+			} else if (p != q) {
+				if (p.getCollisionTime(q) != Double.POSITIVE_INFINITY) {
+					_events.add(new Event(time + p.getCollisionTime(q), time, p, q));
+				}
+			}
+		}
+	}
+
+	/**
+	 * Helper to add wall collision times for each particle p, to be used in the "simulate" method.
+	 * @param p Particle to add collision times for
+	 * @param wallSide the side of the wall that the particle is colliding with
+	 * @param time current time of the event
+	 */
+	private void addP2WTimes (Particle p, String wallSide, double time) {
+		double collisionTime = p.getWallCollisionTime(wallSide, _width);
+		if (collisionTime != Double.POSITIVE_INFINITY) {
+			_events.add(new Event(time + collisionTime, time, p, wallSide));
+		}
+	}
+
+	/**
+	 * Call addP2WTimes on all sides of the wall for each particle p.
+	 * @param p
+	 * @param time
+	 */
+	private void addAllP2WTimes (Particle p, double time) {
+		addP2WTimes(p, "left", time);
+		addP2WTimes(p, "right", time);
+		addP2WTimes(p, "top", time);
+		addP2WTimes(p, "bottom", time);
+	}
+
+	/**
 	 * Executes the actual simulation.
 	 */
 	private void simulate (boolean show) {
@@ -73,11 +114,8 @@ public class ParticleSimulator extends JPanel {
 
 		// add the initial set of possible collisions to the event queue
 		for (Particle p : _particles) {
-			for (Particle q : _particles) {
-				if (p != q && p.getCollisionTime(q) != Double.POSITIVE_INFINITY) {
-					_events.add(new Event(p.getCollisionTime(q), lastTime));
-				}
-			}
+			addAllP2WTimes(p, lastTime); // add all wall collision times for each particle
+			addP2PTimes(p, lastTime); // add all particle collision times for each particle
 		}
 		
 		_events.add(new TerminationEvent(_duration));
@@ -89,17 +127,25 @@ public class ParticleSimulator extends JPanel {
 				updateAllParticles(delta);
 				break;
 			}
-			// if event is no longer valid, skip it
-			if (event._timeOfEvent < lastTime) {
-				continue;
-			}
 
+
+			// if event is no longer valid, skip it
+			if (event._constructorType.equals("P2P")) {
+				if (event._timeEventCreated < event._p.getLastUpdateTime() ||
+						event._timeEventCreated < event._q.getLastUpdateTime()) {
+					continue;
+				}
+			} else if (event._constructorType.equals("P2W")) {
+				if (event._timeEventCreated < event._p.getLastUpdateTime()) {
+					continue;
+				}
+			}
 
 			// Since the event is valid, then pause the simulation for the right
 			// amount of time, and then update the screen.
 			if (show) {
 				try {
-					Thread.sleep((short) delta);
+					Thread.sleep((long) (delta * 69)); // slows down the simulation
 				} catch (InterruptedException ie) {}
 			}
 
@@ -107,22 +153,19 @@ public class ParticleSimulator extends JPanel {
 			updateAllParticles(delta);
 
 			// Update the velocity of the particle(s) involved in the collision
-			for (Particle p : _particles) {
-				for (Particle q : _particles) {
-					// particle-wall collision
-					if (p.getWallCollisionTime(p) == event._timeOfEvent) {
-						p.updateAfterWallCollision(lastTime, p);
-					} else if (p != q && p.getCollisionTime(q) == event._timeOfEvent) {
-						p.updateAfterCollision(lastTime, q);
-					}
-					// Enqueue new events for the particle(s) that were involved in this event.
-						_events.add(new Event(p.getCollisionTime(q), lastTime));
-				}
-
-			}
 			// (either for a particle-wall collision or a particle-particle collision).
 			// You should call the Particle.updateAfterCollision method at some point.
-
+			if (event._constructorType.equals("P2P")) {
+				event._p.updateAfterCollision(event._timeOfEvent, event._q); //
+				addP2PTimes(event._p, event._timeOfEvent);
+				addAllP2WTimes(event._p, event._timeOfEvent);
+				addP2PTimes(event._q, event._timeOfEvent);
+				addAllP2WTimes(event._q, event._timeOfEvent);
+			} else { // P2W
+				event._p.updateAfterWallCollision(event._wallSide, event._timeOfEvent);
+				addP2PTimes(event._p, event._timeOfEvent);
+				addAllP2WTimes(event._p, event._timeOfEvent);
+			}
 
 			// Update the time of our simulation
 			lastTime = event._timeOfEvent;

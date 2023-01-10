@@ -6,21 +6,13 @@ import java.util.*;
 public class Particle {
 	private String _name;
 	private double _x, _y;
-
 	private double _vx, _vy;
 	private double _radius;
 	private double _lastUpdateTime;
-
-	// Boundaries for Walls
-	private static String getRoomWidth (String filename) throws IOException {
-		Scanner s = new Scanner(new File(filename));
-		String line = s.nextLine();
-		s.close();
-		return line;
+	// Getter of _lastUpdateTime
+	public double getLastUpdateTime() {
+		return _lastUpdateTime;
 	}
-	private final double _wallUpperBound = 1e-6;
-	private final double _wallLeftBound = 1e-6;
-	private final double _roomWidth = Double.valueOf(getRoomWidth("particlesInitial.txt")); // Lower & Right Bound
 
 	/**
 	 * Helper method to parse a string into a Particle.
@@ -35,6 +27,7 @@ public class Particle {
 				      .toArray();
 		return new Particle(tokens[0], nums[0], nums[1], nums[2], nums[3], nums[4]);
 	}
+
 
 	/**
 	 * @name name of the particle (useful for debugging)
@@ -105,22 +98,20 @@ public class Particle {
 		_lastUpdateTime = now;
 		other._lastUpdateTime = now;
 	}
-	/**  -- EDITED BY HOWARD
+	/**
 	 * Updates the other particle's velocities after a collision with the wall.
 	 * Collisions with the top and bottom walls should cause the particle's vertical velocity vy to be multiplied by -1.
 	 * Collisions with the left and right walls should cause the particle's horizontal velocity vx to be multiplied by -1.
-	 * @param now the current time in the simulation
-	 * @param p the particle that collided with the wall
+	 * @param wallSide the wall that this particle collided with
+	 * @param time the current time in the simulation
 	 */
-	public void updateAfterWallCollision (double now, Particle p) {
-		if (p._y <= _wallUpperBound || p._y >= _roomWidth) {
-			p._vy = -p._vy;
+	public void updateAfterWallCollision (String wallSide, double time) {
+		if (wallSide.equals("top") || wallSide.equals("bottom")) {
+			this._vy = -this._vy;
+		} else if (wallSide.equals("left") || wallSide.equals("right")) {
+			this._vx = -this._vx;
 		}
-		if (p._x <= _wallLeftBound || p._x >= _roomWidth) {
-			p._vx = -p._vx;
-		}
-		_lastUpdateTime = now;
-		p._lastUpdateTime = now;
+		this._lastUpdateTime = time;
 	}
 	/**
 	 * Computes and returns the time when (if ever) this particle will collide with another particle,
@@ -166,44 +157,28 @@ public class Particle {
 			// no collision
 			t = Double.POSITIVE_INFINITY;
 		}
-
 		return t;
 	}
 
-	/** -- EDITED BY HOWARD
+	/**
 	 * Computes and returns the time when (if ever) this particle will collide with the wall,
 	 * or infinity if the particle will never collide with the wall given their current velocities.
-	 * @param p the other particle to consider
+	 * @param wallSide the wall to consider
+	 * @param width the width of the simulation room
 	 * @return the time with the particles will collide, or infinity if they will never collide
 	 */
-	public double getWallCollisionTime (Particle p) {
-		double t1, t2;
-		double SMALL = 1e-6;
-		double t;
-		if (p._vx > 0) {
-			t1 = (_roomWidth - p._x - p._radius) / p._vx;
-		} else if (p._vx < 0) {
-			t1 = (p._x - p._radius - _wallLeftBound) / -p._vx;
-		} else {
-			t1 = Double.POSITIVE_INFINITY;
+	public double getWallCollisionTime (String wallSide, int width) {
+		if (wallSide.equals("left") && this._vx < 0) {
+				return (_radius - this._x)/this._vx;
+		} else if (wallSide.equals("right") && this._vx > 0) {
+				return (width - _radius - this._x)/this._vx;
+		} else if (wallSide.equals("top") && this._vy < 0) {
+				return (_radius - this._y)/this._vy;
+		} else if (wallSide.equals("bottom") && this._vy > 0) {
+				return (width - _radius - this._y)/this._vy;
 		}
-		if (p._vy > 0) {
-			t2 = (_roomWidth - p._y - p._radius) / p._vy;
-		} else if (p._vy < 0) {
-			t2 = (p._y - p._radius - _wallUpperBound) / -p._vy;
-		} else {
-			t2 = Double.POSITIVE_INFINITY;
-		}
-		if (t1 > SMALL && t2 > SMALL) {
-			t = Math.min(t1, t2);
-		} else if (t1 > SMALL) {
-			t = t1;
-		} else if (t2 > SMALL) {
-			t = t2;
-		} else {
-			// no collision
-			t = Double.POSITIVE_INFINITY;
-		}
-		return t;
+		return Double.POSITIVE_INFINITY;
 	}
+
+
 }
